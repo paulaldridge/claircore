@@ -288,3 +288,8 @@ func (s *Store) UpdateEnrichments(ctx context.Context, kind string, fp driver.Fi
 	}}, s.ops[kind]...)
 	return ref, nil
 }
+
+// RecordSuccessfulUpdate is unimplimented
+func (s *Store) RecordSuccessfulUpdate(ctx context.Context, updater driver.Updater, updateTime time.Time) error {
+	return nil
+}

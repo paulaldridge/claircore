@@ -206,9 +206,12 @@ func (m *Manager) Run(ctx context.Context) error {
 				return
 			}
 
+			updateTime := time.Now()
 			err = m.driveUpdater(ctx, u)
 			if err != nil {
 				errChan <- fmt.Errorf("%v: %w", u.Name(), err)
+			} else {
+				err = m.store.RecordSuccessfulUpdate(ctx, toRun[i], updateTime)
 			}
 		}(toRun[i])
 	}

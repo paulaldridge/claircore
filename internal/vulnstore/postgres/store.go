@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -57,4 +58,9 @@ func (s *Store) DeleteUpdateOperations(ctx context.Context, id ...uuid.UUID) (in
 		return 0, fmt.Errorf("failed to delete: %w", err)
 	}
 	return tag.RowsAffected(), nil
+}
+
+// RecordSuccessfulUpdate updates last time updaters were checked for vulnerabilites
+func (s *Store) RecordSuccessfulUpdate(ctx context.Context, updater driver.Updater, updateTime time.Time) error {
+	return recordSuccessfulUpdate(ctx, s.pool, updater, updateTime)
 }

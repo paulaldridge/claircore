@@ -2,6 +2,7 @@ package vulnstore
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -55,4 +56,6 @@ type Updater interface {
 	GC(ctx context.Context, keep int) (int64, error)
 	// Initialized reports whether the vulnstore contains vulnerabilities.
 	Initialized(context.Context) (bool, error)
+	// RecordSuccessfulUpdate records the last time updater was checked for vulnerabilities
+	RecordSuccessfulUpdate(ctx context.Context, updater driver.Updater, updateTime time.Time) error
 }
