@@ -58,6 +58,7 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 	return nil
 }
 
+// findDistro works out the distro from update name
 func findDistro(updater driver.Updater) string {
 	if strings.Contains(updater.Name(), "RHEL") {
 		return "rhel"
