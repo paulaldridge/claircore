@@ -43,13 +43,9 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 
 	distro := findDistro(updater)
 
-	start := time.Now()
 	if err := pool.QueryRow(ctx, upsert, updater.Name(), updateTime, distro); err != nil {
 		return fmt.Errorf("failed to upsert last update time: %w", err)
 	}
-
-	updateVulnerabilitiesCounter.WithLabelValues("create").Add(1)
-	updateVulnerabilitiesDuration.WithLabelValues("create").Observe(time.Since(start).Seconds())
 
 	zlog.Debug(ctx).
 		Str("updater", updater.Name()).
