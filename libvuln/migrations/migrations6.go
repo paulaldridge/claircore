@@ -6,7 +6,7 @@ const (
 	migration6 = `
 -- updaters_last_run is a table keeping a record of when the updaters were last successfully checked for new vulnerabilities
 CREATE TABLE IF NOT EXISTS updaters_last_run (
-	updater_name TEXT NOT NULL,
+	updater_name TEXT PRIMARY KEY,
 	last_successful_run TIMESTAMP WITH TIME ZONE DEFAULT now(),
 	distro TEXT
 );

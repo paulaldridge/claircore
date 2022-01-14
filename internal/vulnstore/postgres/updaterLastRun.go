@@ -29,7 +29,8 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 			$3
 		)
 		ON CONFLICT (updater_name) DO UPDATE
-		SET last_successful_run = $2;` // TODO do we only want to do this is the last_success_time is newer than the one in db?
+		SET last_successful_run = $2
+		RETURNING updater_name;` // TODO do we only want to do this is the last_success_time is newer than the one in db?
 	)
 
 	ctx = baggage.ContextWithValues(ctx,
@@ -42,8 +43,9 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 	defer tx.Rollback(ctx)
 
 	distro := findDistro(updater)
+	var updaterName string
 
-	if err := pool.QueryRow(ctx, upsert, updater.Name(), updateTime, distro); err != nil {
+	if err := pool.QueryRow(ctx, upsert, updater.Name(), updateTime, distro).Scan(&updaterName); err != nil {
 		return fmt.Errorf("failed to upsert last update time: %w, with distro: %s", err, distro)
 	}
 
