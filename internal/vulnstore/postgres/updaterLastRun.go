@@ -37,7 +37,7 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		fmt.Errorf("unable to start transaction: %w", err)
+		return fmt.Errorf("unable to start transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 

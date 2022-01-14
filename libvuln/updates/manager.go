@@ -211,7 +211,10 @@ func (m *Manager) Run(ctx context.Context) error {
 			if err != nil {
 				errChan <- fmt.Errorf("%v: %w", u.Name(), err)
 			} else {
-				err = m.store.RecordSuccessfulUpdate(ctx, toRun[i], updateTime)
+				err = m.store.RecordSuccessfulUpdate(ctx, u, updateTime)
+				if err != nil {
+					zlog.Error(ctx).Err(err).Msg("error while recording updater run time")
+				}
 			}
 		}(toRun[i])
 	}
