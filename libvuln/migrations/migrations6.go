@@ -8,7 +8,7 @@ const (
 CREATE TABLE IF NOT EXISTS updaters_last_run (
 	updater_name TEXT NOT NULL,
 	last_successful_run TIMESTAMP WITH TIME ZONE DEFAULT now(),
-	distro TEXT NOT NULL
+	distro TEXT
 );
 `
 )

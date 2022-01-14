@@ -213,7 +213,11 @@ func (m *Manager) Run(ctx context.Context) error {
 			} else {
 				err = m.store.RecordSuccessfulUpdate(ctx, u, updateTime)
 				if err != nil {
-					zlog.Error(ctx).Err(err).Msg("error while recording updater run time")
+					zlog.Error(ctx).
+						Err(err).
+						Str("updater", u.Name()).
+						Str("updateTime", updateTime.String()).
+						Msg("error while recording updater run time")
 				}
 			}
 		}(toRun[i])

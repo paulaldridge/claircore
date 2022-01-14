@@ -44,7 +44,7 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 	distro := findDistro(updater)
 
 	if err := pool.QueryRow(ctx, upsert, updater.Name(), updateTime, distro); err != nil {
-		return fmt.Errorf("failed to upsert last update time: %w", err)
+		return fmt.Errorf("failed to upsert last update time: %w, with distro: %s", err, distro)
 	}
 
 	zlog.Debug(ctx).
