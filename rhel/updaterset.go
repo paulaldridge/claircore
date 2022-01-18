@@ -135,6 +135,9 @@ func (f *Factory) UpdaterSet(ctx context.Context) (driver.UpdaterSet, error) {
 	switch res.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotModified:
+		zlog.Debug(ctx).
+			Str("updaterset", "rhel").
+			Msg("Request to rhel showed StatusNotModified so no update needed")
 		// return stub updater to allow us to record that all rhel updaters are up to date
 		stubUpdater := Updater{name: "rhel-all"}
 		s.Add(&stubUpdater)
