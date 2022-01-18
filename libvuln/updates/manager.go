@@ -154,6 +154,21 @@ func (m *Manager) Run(ctx context.Context) error {
 			zlog.Error(ctx).Err(err).Msg("failed constructing factory, excluding from run")
 			continue
 		}
+		if len(set.Updaters()) == 1 {
+			if set.Updaters()[0].Name() == "rhel-all" {
+				updateTime := time.Now()
+				distro := "rhel"
+				err = m.store.RecordNothingToUpdate(ctx, distro, updateTime)
+				if err != nil {
+					zlog.Error(ctx).
+						Err(err).
+						Str("updater", distro).
+						Str("updateTime", updateTime.String()).
+						Msg(fmt.Sprintf("error while recording update time for all updaters for distro %s", distro))
+				}
+				continue
+			}
+		}
 		updaters = append(updaters, set.Updaters()...)
 	}
 

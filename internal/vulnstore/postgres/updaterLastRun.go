@@ -70,3 +70,35 @@ func findDistro(updater driver.Updater) string {
 		return ""
 	}
 }
+
+// recordNothingToUpdate records the latest time for all updater under one distro have been checked for new vulns
+// updates all existing updaters with that distro with the new time
+func recordNothingToUpdate(ctx context.Context, pool *pgxpool.Pool, distro string, updateTime time.Time) error {
+	const (
+		update = `UPDATE updaters_last_run
+		SET last_successful_run = $1
+		WHERE distro = $2
+		RETURNING updater_name;`
+	)
+
+	ctx = baggage.ContextWithValues(ctx,
+		label.String("component", "internal/vulnstore/postgres/recordNothingToUpdate"))
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to start transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var updaterName string
+
+	if err := pool.QueryRow(ctx, update, updateTime, distro).Scan(&updaterName); err != nil {
+		return fmt.Errorf("failed to update all last update times for distro rhel: %w", err)
+	}
+
+	zlog.Debug(ctx).
+		Str("updater", "rhel").
+		Msg("Last checked time updated for all rhel updaters")
+
+	return nil
+}

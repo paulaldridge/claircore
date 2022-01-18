@@ -58,4 +58,6 @@ type Updater interface {
 	Initialized(context.Context) (bool, error)
 	// RecordSuccessfulUpdate records the last time updater was checked for vulnerabilities
 	RecordSuccessfulUpdate(ctx context.Context, updater driver.Updater, updateTime time.Time) error
+	// RecordNothingToUpdate records the last time all updaters for a single distro were checked for vulnerabilities
+	RecordNothingToUpdate(ctx context.Context, distro string, updateTime time.Time) error
 }

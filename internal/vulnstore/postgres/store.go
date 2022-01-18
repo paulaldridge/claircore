@@ -64,3 +64,8 @@ func (s *Store) DeleteUpdateOperations(ctx context.Context, id ...uuid.UUID) (in
 func (s *Store) RecordSuccessfulUpdate(ctx context.Context, updater driver.Updater, updateTime time.Time) error {
 	return recordSuccessfulUpdate(ctx, s.pool, updater, updateTime)
 }
+
+// RecordNothingToUpdate records the last time all updaters for a single distro were checked for vulnerabilities
+func (s *Store) RecordNothingToUpdate(ctx context.Context, distro string, updateTime time.Time) error {
+	return recordNothingToUpdate(ctx, s.pool, distro, updateTime)
+}

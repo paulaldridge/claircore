@@ -293,3 +293,8 @@ func (s *Store) UpdateEnrichments(ctx context.Context, kind string, fp driver.Fi
 func (s *Store) RecordSuccessfulUpdate(ctx context.Context, updater driver.Updater, updateTime time.Time) error {
 	return nil
 }
+
+// RecordNothingToUpdate is unimplimented
+func (s *Store) RecordNothingToUpdate(ctx context.Context, distro string, updateTime time.Time) error {
+	return nil
+}
