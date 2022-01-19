@@ -58,18 +58,18 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 
 // findDistro works out the distro from update name
 func findDistro(updater driver.Updater) string {
-	return strings.SplitN(updater.Name(), "-", 1)[0]
-	// if strings.Contains(updater.Name(), "RHEL") {
-	// 	return "rhel"
-	// } else if strings.Contains(updater.Name(), "alpine") {
-	// 	return "alpine"
-	// } else if strings.Contains(updater.Name(), "debian") {
-	// 	return "debian"
-	// } else if strings.Contains(updater.Name(), "ubuntu") {
-	// 	return "ubuntu"
-	// } else {
-	// 	return ""
-	// }
+	// return strings.SplitN(updater.Name(), "-", 1)[0]
+	if strings.Contains(updater.Name(), "RHEL") {
+		return "rhel"
+	} else if strings.Contains(updater.Name(), "alpine") {
+		return "alpine"
+	} else if strings.Contains(updater.Name(), "debian") {
+		return "debian"
+	} else if strings.Contains(updater.Name(), "ubuntu") {
+		return "ubuntu"
+	} else {
+		return ""
+	}
 }
 
 // recordNothingToUpdate records the latest time for all updater under one distro have been checked for new vulns
