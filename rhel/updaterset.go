@@ -121,7 +121,15 @@ func (f *Factory) UpdaterSet(ctx context.Context) (driver.UpdaterSet, error) {
 		return s, err
 	}
 	if f.manifestEtag != "" {
+		zlog.Debug(ctx).
+			Str("manifestEtag", f.manifestEtag).
+			Str("url", f.url.String()).
+			Msg("manigestEtag set as header on request")
 		req.Header.Set("if-none-match", f.manifestEtag)
+	} else {
+		zlog.Debug(ctx).
+			Str("url", f.url.String()).
+			Msg("manigestEtag not available to set as header on request")
 	}
 
 	res, err := f.client.Do(req)
