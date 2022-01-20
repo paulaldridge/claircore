@@ -193,5 +193,10 @@ func (f *Factory) UpdaterSet(ctx context.Context) (driver.UpdaterSet, error) {
 	}
 	f.manifestEtag = res.Header.Get("etag")
 
+	zlog.Debug(ctx).
+		Str("manifestEtag", f.manifestEtag).
+		Str("url", f.url.String()).
+		Msg("manifestEtag from response header")
+
 	return s, nil
 }
