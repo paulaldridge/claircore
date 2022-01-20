@@ -158,7 +158,7 @@ func (m *Manager) Run(ctx context.Context) error {
 			if set.Updaters()[0].Name() == "rhel-all" {
 				updateTime := time.Now()
 				distro := "rhel"
-				err = m.store.RecordNothingToUpdate(ctx, distro, updateTime)
+				err = m.store.RecordDistroUpdatersUpToDate(ctx, distro, updateTime)
 				if err != nil {
 					zlog.Error(ctx).
 						Err(err).
@@ -226,7 +226,7 @@ func (m *Manager) Run(ctx context.Context) error {
 			if err != nil {
 				errChan <- fmt.Errorf("%v: %w", u.Name(), err)
 			} else {
-				err = m.store.RecordSuccessfulUpdate(ctx, u, updateTime)
+				err = m.store.RecordUpdaterUpToDate(ctx, u, updateTime)
 				if err != nil {
 					zlog.Error(ctx).
 						Err(err).

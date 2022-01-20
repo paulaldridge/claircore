@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -14,27 +13,25 @@ import (
 	"github.com/quay/claircore/libvuln/driver"
 )
 
-// recordSuccessfulUpdate records the latest time an updater is checked for new vulns
+// recordUpdaterUpToDate records that an updater is up to date with vulnerabilities at the last time
 // inserts an updater with last check timestamp, or updates an existing updater with the new time
-func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater driver.Updater, updateTime time.Time) error {
+func recordUpdaterUpToDate(ctx context.Context, pool *pgxpool.Pool, updater driver.Updater, updateTime time.Time) error {
 	const (
 		// upsert inserts or updates a record of last time updater was checked for new vulns
 		upsert = `INSERT INTO updaters_last_run (
 			updater_name,
-			last_successful_run,
-			distro
+			last_successful_run
 		) VALUES (
 			$1,
-			$2,
-			$3
+			$2
 		)
 		ON CONFLICT (updater_name) DO UPDATE
 		SET last_successful_run = $2
-		RETURNING updater_name;` // TODO do we only want to do this is the last_success_time is newer than the one in db?
+		RETURNING updater_name;`
 	)
 
 	ctx = baggage.ContextWithValues(ctx,
-		label.String("component", "internal/vulnstore/postgres/recordSuccessfulUpdate"))
+		label.String("component", "internal/vulnstore/postgres/recordUpdaterUpToDate"))
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -42,11 +39,10 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 	}
 	defer tx.Rollback(ctx)
 
-	distro := findDistro(updater)
 	var updaterName string
 
-	if err := pool.QueryRow(ctx, upsert, updater.Name(), updateTime, distro).Scan(&updaterName); err != nil {
-		return fmt.Errorf("failed to upsert last update time: %w, with distro: %s", err, distro)
+	if err := pool.QueryRow(ctx, upsert, updater.Name(), updateTime).Scan(&updaterName); err != nil {
+		return fmt.Errorf("failed to upsert last update time: %w", err)
 	}
 
 	zlog.Debug(ctx).
@@ -56,34 +52,18 @@ func recordSuccessfulUpdate(ctx context.Context, pool *pgxpool.Pool, updater dri
 	return nil
 }
 
-// findDistro works out the distro from update name
-func findDistro(updater driver.Updater) string {
-	// return strings.SplitN(updater.Name(), "-", 1)[0]
-	if strings.Contains(updater.Name(), "RHEL") {
-		return "rhel"
-	} else if strings.Contains(updater.Name(), "alpine") {
-		return "alpine"
-	} else if strings.Contains(updater.Name(), "debian") {
-		return "debian"
-	} else if strings.Contains(updater.Name(), "ubuntu") {
-		return "ubuntu"
-	} else {
-		return ""
-	}
-}
-
-// recordNothingToUpdate records the latest time for all updater under one distro have been checked for new vulns
+// recordDistroUpdatersUpToDate records that all updaters for a single distro are up to date with vulnerabilities at this time
 // updates all existing updaters with that distro with the new time
-func recordNothingToUpdate(ctx context.Context, pool *pgxpool.Pool, distro string, updateTime time.Time) error {
+func recordDistroUpdatersUpToDate(ctx context.Context, pool *pgxpool.Pool, distro string, updateTime time.Time) error {
 	const (
 		update = `UPDATE updaters_last_run
 		SET last_successful_run = $1
-		WHERE distro = $2
+		WHERE updater_name like $2 || '%'
 		RETURNING updater_name;`
 	)
 
 	ctx = baggage.ContextWithValues(ctx,
-		label.String("component", "internal/vulnstore/postgres/recordNothingToUpdate"))
+		label.String("component", "internal/vulnstore/postgres/recordDistroUpdatersUpToDate"))
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -94,12 +74,12 @@ func recordNothingToUpdate(ctx context.Context, pool *pgxpool.Pool, distro strin
 	var updaterName string
 
 	if err := pool.QueryRow(ctx, update, updateTime, distro).Scan(&updaterName); err != nil {
-		return fmt.Errorf("failed to update all last update times for distro rhel: %w", err)
+		return fmt.Errorf("failed to update all last update times for distro %s: %w", distro, err)
 	}
 
 	zlog.Debug(ctx).
-		Str("updater", "rhel").
-		Msg("Last checked time updated for all rhel updaters")
+		Str("updater", distro).
+		Msg(fmt.Sprintf("Last checked time updated for all %s updaters", distro))
 
 	return nil
 }

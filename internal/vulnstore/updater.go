@@ -56,8 +56,8 @@ type Updater interface {
 	GC(ctx context.Context, keep int) (int64, error)
 	// Initialized reports whether the vulnstore contains vulnerabilities.
 	Initialized(context.Context) (bool, error)
-	// RecordSuccessfulUpdate records the last time updater was checked for vulnerabilities
-	RecordSuccessfulUpdate(ctx context.Context, updater driver.Updater, updateTime time.Time) error
-	// RecordNothingToUpdate records the last time all updaters for a single distro were checked for vulnerabilities
-	RecordNothingToUpdate(ctx context.Context, distro string, updateTime time.Time) error
+	// RecordUpdaterUpToDate records that an updater is up to date with vulnerabilities at the last time
+	RecordUpdaterUpToDate(ctx context.Context, updater driver.Updater, updateTime time.Time) error
+	// RecordDistroUpdatersUpToDate records that all updaters for a single distro are up to date with vulnerabilities at this time
+	RecordDistroUpdatersUpToDate(ctx context.Context, distro string, updateTime time.Time) error
 }
