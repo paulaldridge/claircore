@@ -122,12 +122,15 @@ func (f *Factory) UpdaterSet(ctx context.Context) (driver.UpdaterSet, error) {
 	}
 	if f.manifestEtag != "" {
 		zlog.Debug(ctx).
+			Str("updaterset", "rhel").
 			Str("manifestEtag", f.manifestEtag).
 			Str("url", f.url.String()).
 			Msg("manigestEtag set as header on request")
 		req.Header.Set("if-none-match", f.manifestEtag)
 	} else {
 		zlog.Debug(ctx).
+			Str("updaterset", "rhel").
+			Str("manifestEtag", f.manifestEtag).
 			Str("url", f.url.String()).
 			Msg("manigestEtag not available to set as header on request")
 	}
@@ -142,15 +145,30 @@ func (f *Factory) UpdaterSet(ctx context.Context) (driver.UpdaterSet, error) {
 
 	switch res.StatusCode {
 	case http.StatusOK:
+		zlog.Debug(ctx).
+			Str("updaterset", "rhel").
+			Str("manifestEtag", f.manifestEtag).
+			Str("url", f.url.String()).
+			Int("responseCode", res.StatusCode).
+			Msg("Response from rhel showed StatusOK so update is needed")
 	case http.StatusNotModified:
 		zlog.Debug(ctx).
 			Str("updaterset", "rhel").
-			Msg("Request to rhel showed StatusNotModified so no update needed")
+			Str("manifestEtag", f.manifestEtag).
+			Str("url", f.url.String()).
+			Int("responseCode", res.StatusCode).
+			Msg("Response from rhel showed StatusNotModified so no update needed")
 		// return stub updater to allow us to record that all rhel updaters are up to date
 		stubUpdater := Updater{name: "rhel-all"}
 		s.Add(&stubUpdater)
 		return s, nil
 	default:
+		zlog.Debug(ctx).
+			Str("updaterset", "rhel").
+			Str("manifestEtag", f.manifestEtag).
+			Str("url", f.url.String()).
+			Int("responseCode", res.StatusCode).
+			Msg("Response from rhel gave unexpected response code so erroring without update")
 		return s, fmt.Errorf("unexpected response: %v", res.Status)
 	}
 
@@ -194,6 +212,7 @@ func (f *Factory) UpdaterSet(ctx context.Context) (driver.UpdaterSet, error) {
 	f.manifestEtag = res.Header.Get("etag")
 
 	zlog.Debug(ctx).
+		Str("updaterset", "rhel").
 		Str("manifestEtag", f.manifestEtag).
 		Str("url", f.url.String()).
 		Msg("manifestEtag from response header")
