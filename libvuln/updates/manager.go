@@ -157,14 +157,14 @@ func (m *Manager) Run(ctx context.Context) error {
 		if len(set.Updaters()) == 1 {
 			if set.Updaters()[0].Name() == "rhel-all" {
 				updateTime := time.Now()
-				distro := "rhel"
-				err = m.store.RecordDistroUpdatersUpToDate(ctx, distro, updateTime)
+				updaterSet := "rhel"
+				err = m.store.RecordUpdaterSetUpdateTime(ctx, updaterSet, updateTime)
 				if err != nil {
 					zlog.Error(ctx).
 						Err(err).
-						Str("updater", distro).
+						Str("updaterSet", updaterSet).
 						Str("updateTime", updateTime.String()).
-						Msg(fmt.Sprintf("error while recording update time for all updaters for distro %s", distro))
+						Msg(fmt.Sprintf("error while recording update time for all updaters in updater set %s", updaterSet))
 				}
 				continue
 			}
@@ -226,7 +226,7 @@ func (m *Manager) Run(ctx context.Context) error {
 			if err != nil {
 				errChan <- fmt.Errorf("%v: %w", u.Name(), err)
 			} else {
-				err = m.store.RecordUpdaterUpToDate(ctx, u, updateTime)
+				err = m.store.RecordUpdaterUpdateTime(ctx, u.Name(), updateTime)
 				if err != nil {
 					zlog.Error(ctx).
 						Err(err).

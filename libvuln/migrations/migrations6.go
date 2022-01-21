@@ -2,12 +2,12 @@ package migrations
 
 const (
 	// this migration modifies the database to add a
-	// delete cascade constraint to the enrichments FKs
+	// tabele to record update times
 	migration6 = `
--- updaters_last_run is a table keeping a record of when the updaters were last successfully checked for new vulnerabilities
-CREATE TABLE IF NOT EXISTS updaters_last_run (
+-- update_times is a table keeping a record of when the updaters were last successfully checked for new vulnerabilities
+CREATE TABLE IF NOT EXISTS update_time (
 	updater_name TEXT PRIMARY KEY,
-	last_successful_run TIMESTAMP WITH TIME ZONE DEFAULT now()
+	last_update_time TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 `
 )

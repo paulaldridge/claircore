@@ -60,12 +60,12 @@ func (s *Store) DeleteUpdateOperations(ctx context.Context, id ...uuid.UUID) (in
 	return tag.RowsAffected(), nil
 }
 
-// RecordUpdaterUpToDate records that an updater is up to date with vulnerabilities at the last time
-func (s *Store) RecordUpdaterUpToDate(ctx context.Context, updater driver.Updater, updateTime time.Time) error {
-	return recordUpdaterUpToDate(ctx, s.pool, updater, updateTime)
+// RecordUpdaterUpdateTime records that an updater is up to date with vulnerabilities at the last time
+func (s *Store) RecordUpdaterUpdateTime(ctx context.Context, updaterName string, updateTime time.Time) error {
+	return recordUpdaterUpdateTime(ctx, s.pool, updaterName, updateTime)
 }
 
-// RecordDistroUpdatersUpToDate records that all updaters for a single distro are up to date with vulnerabilities at this time
-func (s *Store) RecordDistroUpdatersUpToDate(ctx context.Context, distro string, updateTime time.Time) error {
-	return recordDistroUpdatersUpToDate(ctx, s.pool, distro, updateTime)
+// RecordUpdaterSetUpdateTime records that all updaters from a updater set are up to date with vulnerabilities at this time
+func (s *Store) RecordUpdaterSetUpdateTime(ctx context.Context, updaterSet string, updateTime time.Time) error {
+	return recordUpdaterSetUpdateTime(ctx, s.pool, updaterSet, updateTime)
 }
