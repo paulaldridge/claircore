@@ -15,7 +15,7 @@ import (
 // inserts an updater with last check timestamp, or updates an existing updater with the new time
 func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterName string, updateTime time.Time) error {
 	const (
-		// upsert inserts or updates a record of last time updater was checked for new vulns
+		// upsert inserts or updates a record of the last time an updater was checked for new vulns
 		upsert = `INSERT INTO update_time (
 			updater_name,
 			last_update_time
@@ -45,7 +45,7 @@ func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterNam
 
 	zlog.Debug(ctx).
 		Str("updater", updaterName).
-		Msg("Updater last checked time updated")
+		Msg("Updater last update time stored in database")
 
 	return nil
 }
@@ -77,7 +77,7 @@ func recordUpdaterSetUpdateTime(ctx context.Context, pool *pgxpool.Pool, updater
 
 	zlog.Debug(ctx).
 		Str("updaterSet", updaterSet).
-		Msg(fmt.Sprintf("Last update time updated for all %s updaters", updaterSet))
+		Msg(fmt.Sprintf("Last update time stored in database for all %s updaters", updaterSet))
 
 	return nil
 }
