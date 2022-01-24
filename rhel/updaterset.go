@@ -143,18 +143,40 @@ func (f *Factory) UpdaterSet(ctx context.Context) (driver.UpdaterSet, error) {
 		return s, err
 	}
 
+	if res.Header.Get("etag") == f.manifestEtag {
+		zlog.Debug(ctx).
+			Str("updaterset", "rhel").
+			Str("storedManifestEtag", f.manifestEtag).
+			Str("responseManifestEtag", res.Header.Get("etag")).
+			Str("url", f.url.String()).
+			Int("responseCode", res.StatusCode).
+			Msg("Response manifestEtag equals previous stored Etag - marking all rhel updaters as up to date")
+		// return stub updater to allow us to record that all rhel updaters are up to date
+		stubUpdater := Updater{name: "rhel-all"}
+		s.Add(&stubUpdater)
+		return s, nil
+	} else {
+		zlog.Debug(ctx).
+			Str("updaterset", "rhel").
+			Str("storedManifestEtag", f.manifestEtag).
+			Str("responseManifestEtag", res.Header.Get("etag")).
+			Str("url", f.url.String()).
+			Int("responseCode", res.StatusCode).
+			Msg("Response manifestEtag does not equal previous stored Etag - running rhel updaters as normal")
+	}
+
 	switch res.StatusCode {
 	case http.StatusOK:
 		zlog.Debug(ctx).
 			Str("updaterset", "rhel").
-			Str("manifestEtag", f.manifestEtag).
+			Str("manifestEtag", res.Header.Get("etag")).
 			Str("url", f.url.String()).
 			Int("responseCode", res.StatusCode).
 			Msg("Response from rhel showed StatusOK so update is needed")
 	case http.StatusNotModified:
 		zlog.Debug(ctx).
 			Str("updaterset", "rhel").
-			Str("manifestEtag", f.manifestEtag).
+			Str("manifestEtag", res.Header.Get("etag")).
 			Str("url", f.url.String()).
 			Int("responseCode", res.StatusCode).
 			Msg("Response from rhel showed StatusNotModified so no update needed")
@@ -165,7 +187,7 @@ func (f *Factory) UpdaterSet(ctx context.Context) (driver.UpdaterSet, error) {
 	default:
 		zlog.Debug(ctx).
 			Str("updaterset", "rhel").
-			Str("manifestEtag", f.manifestEtag).
+			Str("manifestEtag", res.Header.Get("etag")).
 			Str("url", f.url.String()).
 			Int("responseCode", res.StatusCode).
 			Msg("Response from rhel gave unexpected response code so erroring without update")
