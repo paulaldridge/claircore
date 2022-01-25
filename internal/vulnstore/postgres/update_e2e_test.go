@@ -78,7 +78,7 @@ func (e *e2e) Run(ctx context.Context) func(*testing.T) {
 
 		{"Update", e.Update},
 		{"GetUpdateOperations", e.GetUpdateOperations},
-		{"recordUpdaterUpdateTime", e.recordUpdaterUpdateTime},
+		{"recordUpdaterUpdateTime", e.recordUpdateTimes},
 		{"Diff", e.Diff},
 		{"DeleteUpdateOperations", e.DeleteUpdateOperations},
 	}
@@ -166,8 +166,9 @@ func (e *e2e) GetUpdateOperations(ctx context.Context) func(*testing.T) {
 	}
 }
 
-// recordUpdaterUpdateTime confirms multiple updates to record last update times
-func (e *e2e) recordUpdaterUpdateTime(ctx context.Context) func(*testing.T) {
+// recordUpdateTimes confirms multiple updates to record last update times
+// and then an update to an whole updater set
+func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := zlog.Test(ctx, t)
 		expectedTableContents := make(map[string]time.Time)
@@ -182,11 +183,13 @@ func (e *e2e) recordUpdaterUpdateTime(ctx context.Context) func(*testing.T) {
 			}
 			expectedTableContents[updater] = updateTime
 		}
-		checkUpsertedUpdateTimes(ctx, t, e.pool, expectedTableContents)
-		// newUpdaterSetTime := time.Date(2021, time.Month(2), 25, 1, 10, 30, 0, time.UTC)
-		// e.s.RecordUpdaterSetUpdateTime(ctx, "test", newUpdaterSetTime)
+		checkUpdateTimes(ctx, t, e.pool, expectedTableContents)
 
-		// checkUpdatedUpdaterSetTime(ctx, t, e.pool, expectedTableContents)
+		newUpdaterSetTime := time.Date(2021, time.Month(2), 25, 1, 10, 30, 0, time.UTC)
+		e.s.RecordUpdaterSetUpdateTime(ctx, "test", newUpdaterSetTime)
+		expectedTableContents["test-updater-1"] = newUpdaterSetTime
+		expectedTableContents["test-updater-2"] = newUpdaterSetTime
+		checkUpdateTimes(ctx, t, e.pool, expectedTableContents)
 		t.Log("ok")
 	}
 }
@@ -443,9 +446,9 @@ WHERE uo.ref = $1::uuid;`
 	}
 }
 
-// checkUpsertedUpdateTimes confirms updater update times are upserted into the database correctly when
+// checkUpdateTimes confirms updater update times are upserted into the database correctly when
 // store.RecordUpaterUptdateTime is called.
-func checkUpsertedUpdateTimes(ctx context.Context, t *testing.T, pool *pgxpool.Pool, updates map[string]time.Time) {
+func checkUpdateTimes(ctx context.Context, t *testing.T, pool *pgxpool.Pool, updates map[string]time.Time) {
 	const query = `SELECT updater_name, last_update_time
 FROM update_time`
 
@@ -489,7 +492,7 @@ FROM update_time`
 		}
 	}
 
-	// confirm queriedVulns contain all expected updates
+	// confirm queriedUpdates contain all expected updates
 	for name := range updates {
 		if _, ok := queriedUpdates[name]; !ok {
 			t.Fatalf("expected update %v was not found in query", name)
