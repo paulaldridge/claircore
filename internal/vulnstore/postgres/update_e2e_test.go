@@ -175,16 +175,18 @@ func (e *e2e) recordUpdaterUpdateTime(ctx context.Context) func(*testing.T) {
 		updates["test-updater-1"] = time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC)
 		updates["test-updater-2"] = time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC)
 		updates["test-updater-1"] = time.Date(2021, time.Month(2), 22, 1, 10, 30, 0, time.UTC)
-		updaters := []string{"test-updater-1", "test-updater2"}
-		for _, updater := range updaters {
-			testTime := time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC)
-			err := e.s.RecordUpdaterUpdateTime(ctx, updater, testTime)
+		for updater, updateTime := range updates {
+			err := e.s.RecordUpdaterUpdateTime(ctx, updater, updateTime)
 			if err != nil {
 				t.Fatalf("failed to perform update: %v", err)
 			}
-			expectedTableContents[updater] = testTime
+			expectedTableContents[updater] = updateTime
 		}
 		checkUpsertedUpdateTimes(ctx, t, e.pool, expectedTableContents)
+		// newUpdaterSetTime := time.Date(2021, time.Month(2), 25, 1, 10, 30, 0, time.UTC)
+		// e.s.RecordUpdaterSetUpdateTime(ctx, "test", newUpdaterSetTime)
+
+		// checkUpdatedUpdaterSetTime(ctx, t, e.pool, expectedTableContents)
 		t.Log("ok")
 	}
 }
@@ -475,7 +477,7 @@ FROM update_time`
 		t.Error(err)
 	}
 
-	// confirm we did not receive unexpected vulns or bad fields
+	// confirm we did not receive unexpected updates
 	for name, got := range queriedUpdates {
 		if want, ok := updates[name]; !ok {
 			t.Fatalf("received unexpected update: %s %v", name, got)
@@ -487,7 +489,7 @@ FROM update_time`
 		}
 	}
 
-	// confirm queriedVulns contain all expected vulns
+	// confirm queriedVulns contain all expected updates
 	for name := range updates {
 		if _, ok := queriedUpdates[name]; !ok {
 			t.Fatalf("expected update %v was not found in query", name)
