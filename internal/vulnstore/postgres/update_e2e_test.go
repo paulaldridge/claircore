@@ -446,10 +446,6 @@ WHERE uo.ref = $1::uuid;`
 func checkUpsertedUpdateTimes(ctx context.Context, t *testing.T, pool *pgxpool.Pool, updates map[string]time.Time) {
 	const query = `SELECT updater_name, last_update_time
 FROM update_time`
-	// expectedUpdaters := map[string]string{}
-	// for _, vuln := range vulns {
-	// 	expectedVulns[vuln.Name] = vuln
-	// }
 
 	rows, err := pool.Query(ctx, query)
 	if err != nil {

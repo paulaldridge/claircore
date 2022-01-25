@@ -11,8 +11,8 @@ import (
 	"go.opentelemetry.io/otel/label"
 )
 
-// recordUpdaterUpdateTime records that an updater is up to date with vulnerabilities at the last time
-// inserts an updater with last check timestamp, or updates an existing updater with the new time
+// recordUpdaterUpdateTime records that an updater is up to date with vulnerabilities at this time
+// inserts an updater with last update timestamp, or updates an existing updater with a new update time
 func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterName string, updateTime time.Time) error {
 	const (
 		// upsert inserts or updates a record of the last time an updater was checked for new vulns
@@ -51,7 +51,8 @@ func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterNam
 }
 
 // recordUpdaterSetUpdateTime records that all updaters for a single updaterSet are up to date with vulnerabilities at this time
-// updates all existing updaters with that distro with the new time
+// updates all existing updaters from this upater set with the new update time
+// the updater set parameteer passed needs to match the prefix of the given udpdater set name format
 func recordUpdaterSetUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterSet string, updateTime time.Time) error {
 	const (
 		update = `UPDATE update_time

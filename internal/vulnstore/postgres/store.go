@@ -60,7 +60,7 @@ func (s *Store) DeleteUpdateOperations(ctx context.Context, id ...uuid.UUID) (in
 	return tag.RowsAffected(), nil
 }
 
-// RecordUpdaterUpdateTime records that an updater is up to date with vulnerabilities at the last time
+// RecordUpdaterUpdateTime records that an updater is up to date with vulnerabilities at this time
 func (s *Store) RecordUpdaterUpdateTime(ctx context.Context, updaterName string, updateTime time.Time) error {
 	return recordUpdaterUpdateTime(ctx, s.pool, updaterName, updateTime)
 }
