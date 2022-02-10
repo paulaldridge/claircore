@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/quay/claircore/libvuln/driver"
 	"github.com/quay/zlog"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/label"
@@ -13,18 +14,39 @@ import (
 
 // recordUpdaterUpdateTime records that an updater is up to date with vulnerabilities at this time
 // inserts an updater with last update timestamp, or updates an existing updater with a new update time
-func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterName string, updateTime time.Time) error {
+func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterName string, updateTime time.Time, fingerprint driver.Fingerprint, updaterError error) error {
 	const (
+		// // upsert inserts or updates a record of the last time an updater was checked for new vulns
+		// upsert = `INSERT INTO update_time (
+		// 	updater_name,
+		// 	last_update_time
+		// ) VALUES (
+		// 	$1,
+		// 	$2
+		// )
+		// ON CONFLICT (updater_name) DO UPDATE
+		// SET last_update_time = $2
+		// RETURNING updater_name;`
+
 		// upsert inserts or updates a record of the last time an updater was checked for new vulns
-		upsert = `INSERT INTO update_time (
+		upsert = `INSERT INTO updater_status (
 			updater_name,
-			last_update_time
+			last_update,
+			last_success,
+			success,
+			fingerprint
 		) VALUES (
 			$1,
-			$2
+			$2,
+			$2,
+			'true',
+			$3
 		)
 		ON CONFLICT (updater_name) DO UPDATE
-		SET last_update_time = $2
+		SET last_update = $2,
+			last_success = $2,
+			success = 'true',
+			fingerprint = $3
 		RETURNING updater_name;`
 	)
 
@@ -39,7 +61,7 @@ func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterNam
 
 	var returnedUpdaterName string
 
-	if err := pool.QueryRow(ctx, upsert, updaterName, updateTime).Scan(&returnedUpdaterName); err != nil {
+	if err := pool.QueryRow(ctx, upsert, updaterName, updateTime, fingerprint).Scan(&returnedUpdaterName); err != nil {
 		return fmt.Errorf("failed to upsert last update time: %w", err)
 	}
 
@@ -54,12 +76,21 @@ func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterNam
 // updates all existing updaters from this upater set with the new update time
 // the updater set parameteer passed needs to match the prefix of the given udpdater set name format
 func recordUpdaterSetUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterSet string, updateTime time.Time) error {
+	// const (
+	// 	update = `UPDATE update_time
+	// 	SET last_update_time = $1
+	// 	WHERE updater_name like $2 || '%'
+	// 	RETURNING updater_name;`
+	// )
 	const (
-		update = `UPDATE update_time
-		SET last_update_time = $1
+		update = `UPDATE updater_status
+		SET last_update = $1,
+			last_success = $1,
+			success = 'true'
 		WHERE updater_name like $2 || '%'
 		RETURNING updater_name;`
 	)
+
 
 	ctx = baggage.ContextWithValues(ctx,
 		label.String("component", "internal/vulnstore/postgres/recordUpdaterSetUpdateTime"))

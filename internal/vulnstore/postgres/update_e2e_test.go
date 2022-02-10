@@ -166,29 +166,55 @@ func (e *e2e) GetUpdateOperations(ctx context.Context) func(*testing.T) {
 	}
 }
 
+type update struct {
+	UpdaterName string
+	UpdateTime  time.Time
+	Success     bool               // should this be in struct or should the struct just be input stuff
+	Fingerprint driver.Fingerprint // should this be fingerprint of lastFingerprint (insert not table contents)
+	UpdateError error
+}
+
 // recordUpdateTimes confirms multiple updates to record last update times
 // and then an update to an whole updater set
 func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := zlog.Test(ctx, t)
-		expectedTableContents := make(map[string]time.Time)
-		updates := make(map[string]time.Time)
-		updates["test-updater-1"] = time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC)
-		updates["test-updater-2"] = time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC)
-		updates["test-updater-1"] = time.Date(2021, time.Month(2), 22, 1, 10, 30, 0, time.UTC)
-		for updater, updateTime := range updates {
-			err := e.s.RecordUpdaterUpdateTime(ctx, updater, updateTime)
+		updates := []update{
+			{
+				UpdaterName: "test-updater-1",
+				UpdateTime:  time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC),
+				Success:     true,
+				Fingerprint: driver.Fingerprint(uuid.New().String()),
+			},
+			{
+				UpdaterName: "test-updater-1",
+				UpdateTime:  time.Date(2022, time.Month(1), 22, 2, 10, 30, 0, time.UTC),
+				Success:     true,
+				Fingerprint: driver.Fingerprint(uuid.New().String()),
+			},
+			{
+				UpdaterName: "test-updater-2",
+				UpdateTime:  time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC),
+				Success:     true,
+				Fingerprint: driver.Fingerprint(uuid.New().String()),
+			},
+		}
+		expectedTableContents := make(map[string]update)
+		for _, update := range updates {
+			err := e.s.RecordUpdaterUpdateTime(ctx, update.UpdaterName, update.UpdateTime, update.Fingerprint, update.UpdateError)
 			if err != nil {
 				t.Fatalf("failed to perform update: %v", err)
 			}
-			expectedTableContents[updater] = updateTime
+			expectedTableContents[update.UpdaterName] = update
 		}
 		checkUpdateTimes(ctx, t, e.pool, expectedTableContents)
 
 		newUpdaterSetTime := time.Date(2021, time.Month(2), 25, 1, 10, 30, 0, time.UTC)
 		e.s.RecordUpdaterSetUpdateTime(ctx, "test", newUpdaterSetTime)
-		expectedTableContents["test-updater-1"] = newUpdaterSetTime
-		expectedTableContents["test-updater-2"] = newUpdaterSetTime
+		for updater, row := range expectedTableContents {
+			row.UpdateTime = newUpdaterSetTime
+			expectedTableContents[updater] = row
+		}
 		checkUpdateTimes(ctx, t, e.pool, expectedTableContents)
 		t.Log("ok")
 	}
@@ -448,9 +474,9 @@ WHERE uo.ref = $1::uuid;`
 
 // checkUpdateTimes confirms updater update times are upserted into the database correctly when
 // store.RecordUpaterUptdateTime is called.
-func checkUpdateTimes(ctx context.Context, t *testing.T, pool *pgxpool.Pool, updates map[string]time.Time) {
-	const query = `SELECT updater_name, last_update_time
-FROM update_time`
+func checkUpdateTimes(ctx context.Context, t *testing.T, pool *pgxpool.Pool, updates map[string]update) {
+	const query = `SELECT updater_name, last_update, last_success, success, fingerprint, error
+FROM updater_status`
 
 	rows, err := pool.Query(ctx, query)
 	if err != nil {
@@ -458,23 +484,32 @@ FROM update_time`
 	}
 	defer rows.Close()
 
-	type updateRecord struct {
-		updaterName    string
-		lastUpdateTime time.Time
-	}
-
-	queriedUpdates := make(map[string]time.Time)
+	queriedUpdates := make(map[string]update)
 	for rows.Next() {
 		var updaterName string
 		var lastUpdateTime time.Time
+		var lastSuccess time.Time
+		var success bool
+		var fingerprint string
+		var updateError error
 		err := rows.Scan(
 			&updaterName,
 			&lastUpdateTime,
+			&lastSuccess,
+			&success,
+			&fingerprint,
+			updateError,
 		)
 		if err != nil {
 			t.Fatalf("failed to scan update: %v", err)
 		}
-		queriedUpdates[updaterName] = lastUpdateTime
+		queriedUpdates[updaterName] = update{
+			UpdaterName: updaterName,
+			UpdateTime:  lastUpdateTime,
+			Success:     success,
+			Fingerprint: driver.Fingerprint(fingerprint),
+			UpdateError: updateError,
+		}
 	}
 	if err := rows.Err(); err != nil {
 		t.Error(err)
@@ -485,7 +520,6 @@ FROM update_time`
 		if want, ok := updates[name]; !ok {
 			t.Fatalf("received unexpected update: %s %v", name, got)
 		} else {
-			// compare update time
 			if !cmp.Equal(want, got) {
 				t.Fatal(cmp.Diff(want, got))
 			}

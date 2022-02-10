@@ -210,20 +210,20 @@ func (m *Manager) Run(ctx context.Context) error {
 				return
 			}
 
-			updateTime := time.Now()
+			// updateTime := time.Now()
 			err = m.driveUpdater(ctx, u)
 			if err != nil {
 				errChan <- fmt.Errorf("%v: %w", u.Name(), err)
-			} else {
-				err = m.store.RecordUpdaterUpdateTime(ctx, u.Name(), updateTime)
-				if err != nil {
-					zlog.Error(ctx).
-						Err(err).
-						Str("updater", u.Name()).
-						Str("updateTime", updateTime.String()).
-						Msg("error while recording updater run time")
-				}
-			}
+			} // else {
+			// 	err = m.store.RecordUpdaterUpdateTime(ctx, u.Name(), updateTime)
+			// 	if err != nil {
+			// 		zlog.Error(ctx).
+			// 			Err(err).
+			// 			Str("updater", u.Name()).
+			// 			Str("updateTime", updateTime.String()).
+			// 			Msg("error while recording updater run time")
+			// 	}
+			// }
 		}(toRun[i])
 	}
 
@@ -288,6 +288,20 @@ func (m *Manager) updaterSetUpToDate(ctx context.Context, set driver.UpdaterSet,
 // DriveUpdater performs the business logic of fetching, parsing, and loading
 // vulnerabilities discovered by an updater into the database.
 func (m *Manager) driveUpdater(ctx context.Context, u driver.Updater) error {
+	var newFP driver.Fingerprint
+	var err error
+	updateTime := time.Now()
+	defer func() {
+		deferErr := m.store.RecordUpdaterUpdateTime(ctx, u.Name(), updateTime, newFP, err)
+		if deferErr != nil {
+			zlog.Error(ctx).
+				Err(deferErr).
+				Str("updater", u.Name()).
+				Str("updateTime", updateTime.String()).
+				Msg("error while recording updater run time")
+		}
+	}()
+
 	name := u.Name()
 	ctx = baggage.ContextWithValues(ctx,
 		label.String("component", "libvuln/updates/Manager.driveUpdater"),
@@ -315,7 +329,6 @@ func (m *Manager) driveUpdater(ctx context.Context, u driver.Updater) error {
 	}
 
 	var vulnDB io.ReadCloser
-	var newFP driver.Fingerprint
 	switch {
 	case euOK:
 		vulnDB, newFP, err = eu.FetchEnrichment(ctx, prevFP)
