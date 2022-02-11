@@ -184,6 +184,7 @@ func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 		errorText := "test error"
 		firstUpdateDate := time.Date(2020, time.Month(1), 22, 2, 10, 30, 0, time.UTC)
 		secondUpdateDate := time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC)
+		var emptyFingerprint driver.Fingerprint
 		updates := []update{
 			{
 				UpdaterName:     "test-updater-1",
@@ -204,7 +205,7 @@ func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 				UpdateTime:      firstUpdateDate,
 				LastSuccessTime: &firstUpdateDate,
 				Success:         true,
-				Fingerprint:     driver.Fingerprint(uuid.New().String()),
+				Fingerprint:     emptyFingerprint,
 			},
 			{
 				UpdaterName: "test-updater-3",
