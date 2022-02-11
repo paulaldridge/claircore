@@ -168,12 +168,12 @@ func (e *e2e) GetUpdateOperations(ctx context.Context) func(*testing.T) {
 }
 
 type update struct {
-	UpdaterName     string             `json:"updater_name"`
-	UpdateTime      time.Time          `json:"last_update"`
-	LastSuccessTime *time.Time         `json:"last_success"`
-	Success         bool               `json:"success"`
-	Fingerprint     driver.Fingerprint `json:"fingerprint"`
-	UpdateError     *string            `json:"error"`
+	UpdaterName            string             `json:"updater_name"`
+	LastAttempt            time.Time          `json:"last_attempt"`
+	LastSuccess            *time.Time         `json:"last_success"`
+	LastRunSucceeded       bool               `json:"last_run_succeeded"`
+	LastAttemptFingerprint driver.Fingerprint `json:"last_attempt_fingerprint"`
+	LastError              *string            `json:"last_error"`
 }
 
 // recordUpdateTimes confirms multiple updates to record last update times
@@ -187,41 +187,41 @@ func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 		var emptyFingerprint driver.Fingerprint
 		updates := []update{
 			{
-				UpdaterName:     "test-updater-1",
-				UpdateTime:      firstUpdateDate,
-				LastSuccessTime: &firstUpdateDate,
-				Success:         true,
-				Fingerprint:     driver.Fingerprint(uuid.New().String()),
+				UpdaterName:            "test-updater-1",
+				LastAttempt:            firstUpdateDate,
+				LastSuccess:            &firstUpdateDate,
+				LastRunSucceeded:       true,
+				LastAttemptFingerprint: driver.Fingerprint(uuid.New().String()),
 			},
 			{
-				UpdaterName:     "test-updater-1",
-				UpdateTime:      secondUpdateDate,
-				LastSuccessTime: &secondUpdateDate,
-				Success:         true,
-				Fingerprint:     driver.Fingerprint(uuid.New().String()),
+				UpdaterName:            "test-updater-1",
+				LastAttempt:            secondUpdateDate,
+				LastSuccess:            &secondUpdateDate,
+				LastRunSucceeded:       true,
+				LastAttemptFingerprint: driver.Fingerprint(uuid.New().String()),
 			},
 			{
-				UpdaterName:     "test-updater-2",
-				UpdateTime:      firstUpdateDate,
-				LastSuccessTime: &firstUpdateDate,
-				Success:         true,
-				Fingerprint:     emptyFingerprint,
+				UpdaterName:            "test-updater-2",
+				LastAttempt:            firstUpdateDate,
+				LastSuccess:            &firstUpdateDate,
+				LastRunSucceeded:       true,
+				LastAttemptFingerprint: emptyFingerprint,
 			},
 			{
-				UpdaterName: "test-updater-3",
-				UpdateTime:  firstUpdateDate,
-				Success:     false,
-				Fingerprint: driver.Fingerprint(uuid.New().String()),
-				UpdateError: &errorText,
+				UpdaterName:            "test-updater-3",
+				LastAttempt:            firstUpdateDate,
+				LastRunSucceeded:       false,
+				LastAttemptFingerprint: driver.Fingerprint(uuid.New().String()),
+				LastError:              &errorText,
 			},
 		}
 		expectedTableContents := make(map[string]update)
 		for _, update := range updates {
 			var updateError error
-			if update.UpdateError != nil {
-				updateError = errors.New(*update.UpdateError)
+			if update.LastError != nil {
+				updateError = errors.New(*update.LastError)
 			}
-			err := e.s.RecordUpdaterUpdateTime(ctx, update.UpdaterName, update.UpdateTime, update.Fingerprint, updateError)
+			err := e.s.RecordUpdaterUpdateTime(ctx, update.UpdaterName, update.LastAttempt, update.LastAttemptFingerprint, updateError)
 			if err != nil {
 				t.Fatalf("failed to perform update: %v", err)
 			}
@@ -232,9 +232,9 @@ func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 		newUpdaterSetTime := time.Date(2021, time.Month(2), 25, 1, 10, 30, 0, time.UTC)
 		e.s.RecordUpdaterSetUpdateTime(ctx, "test", newUpdaterSetTime)
 		for updater, row := range expectedTableContents {
-			row.UpdateTime = newUpdaterSetTime
-			row.LastSuccessTime = &newUpdaterSetTime
-			row.Success = true
+			row.LastAttempt = newUpdaterSetTime
+			row.LastSuccess = &newUpdaterSetTime
+			row.LastRunSucceeded = true
 			expectedTableContents[updater] = row
 		}
 		checkUpdateTimes(ctx, t, e.pool, expectedTableContents)
@@ -497,7 +497,7 @@ WHERE uo.ref = $1::uuid;`
 // checkUpdateTimes confirms updater update times are upserted into the database correctly when
 // store.RecordUpaterUptdateTime is called.
 func checkUpdateTimes(ctx context.Context, t *testing.T, pool *pgxpool.Pool, updates map[string]update) {
-	const query = `SELECT updater_name, last_update, last_success, success, fingerprint, error
+	const query = `SELECT updater_name, last_attempt, last_success, last_run_succeeded, last_attempt_fingerprint, last_error
 FROM updater_status`
 
 	rows, err := pool.Query(ctx, query)
@@ -511,11 +511,11 @@ FROM updater_status`
 		var updateEntry update
 		err := rows.Scan(
 			&updateEntry.UpdaterName,
-			&updateEntry.UpdateTime,
-			&updateEntry.LastSuccessTime,
-			&updateEntry.Success,
-			&updateEntry.Fingerprint,
-			&updateEntry.UpdateError,
+			&updateEntry.LastAttempt,
+			&updateEntry.LastSuccess,
+			&updateEntry.LastRunSucceeded,
+			&updateEntry.LastAttemptFingerprint,
+			&updateEntry.LastError,
 		)
 		if err != nil {
 			t.Fatalf("failed to scan update: %v", err)
