@@ -168,11 +168,12 @@ func (e *e2e) GetUpdateOperations(ctx context.Context) func(*testing.T) {
 }
 
 type update struct {
-	UpdaterName string             `json:"updater_name"`
-	UpdateTime  time.Time          `json:"last_update"`
-	Success     bool               `json:"success"`
-	Fingerprint driver.Fingerprint `json:"fingerprint"`
-	UpdateError *string            `json:"error"`
+	UpdaterName     string             `json:"updater_name"`
+	UpdateTime      time.Time          `json:"last_update"`
+	LastSuccessTime *time.Time         `json:"last_success"`
+	Success         bool               `json:"success"`
+	Fingerprint     driver.Fingerprint `json:"fingerprint"`
+	UpdateError     *string            `json:"error"`
 }
 
 // recordUpdateTimes confirms multiple updates to record last update times
@@ -181,28 +182,33 @@ func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := zlog.Test(ctx, t)
 		errorText := "test error"
+		firstUpdateDate := time.Date(2020, time.Month(1), 22, 2, 10, 30, 0, time.UTC)
+		secondUpdateDate := time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC)
 		updates := []update{
 			{
-				UpdaterName: "test-updater-1",
-				UpdateTime:  time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC),
-				Success:     true,
-				Fingerprint: driver.Fingerprint(uuid.New().String()),
+				UpdaterName:     "test-updater-1",
+				UpdateTime:      firstUpdateDate,
+				LastSuccessTime: &firstUpdateDate,
+				Success:         true,
+				Fingerprint:     driver.Fingerprint(uuid.New().String()),
 			},
 			{
-				UpdaterName: "test-updater-1",
-				UpdateTime:  time.Date(2022, time.Month(1), 22, 2, 10, 30, 0, time.UTC),
-				Success:     true,
-				Fingerprint: driver.Fingerprint(uuid.New().String()),
+				UpdaterName:     "test-updater-1",
+				UpdateTime:      secondUpdateDate,
+				LastSuccessTime: &secondUpdateDate,
+				Success:         true,
+				Fingerprint:     driver.Fingerprint(uuid.New().String()),
 			},
 			{
-				UpdaterName: "test-updater-2",
-				UpdateTime:  time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC),
-				Success:     true,
-				Fingerprint: driver.Fingerprint(uuid.New().String()),
+				UpdaterName:     "test-updater-2",
+				UpdateTime:      firstUpdateDate,
+				LastSuccessTime: &firstUpdateDate,
+				Success:         true,
+				Fingerprint:     driver.Fingerprint(uuid.New().String()),
 			},
 			{
 				UpdaterName: "test-updater-3",
-				UpdateTime:  time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC),
+				UpdateTime:  firstUpdateDate,
 				Success:     false,
 				Fingerprint: driver.Fingerprint(uuid.New().String()),
 				UpdateError: &errorText,
@@ -226,6 +232,7 @@ func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 		e.s.RecordUpdaterSetUpdateTime(ctx, "test", newUpdaterSetTime)
 		for updater, row := range expectedTableContents {
 			row.UpdateTime = newUpdaterSetTime
+			row.LastSuccessTime = &newUpdaterSetTime
 			row.Success = true
 			expectedTableContents[updater] = row
 		}
@@ -500,12 +507,11 @@ FROM updater_status`
 
 	queriedUpdates := make(map[string]update)
 	for rows.Next() {
-		var lastSuccess *time.Time // TODO add this to update struct
 		var updateEntry update
 		err := rows.Scan(
 			&updateEntry.UpdaterName,
 			&updateEntry.UpdateTime,
-			&lastSuccess,
+			&updateEntry.LastSuccessTime,
 			&updateEntry.Success,
 			&updateEntry.Fingerprint,
 			&updateEntry.UpdateError,
@@ -521,11 +527,9 @@ FROM updater_status`
 
 	// confirm we did not receive unexpected updates
 	for name, got := range queriedUpdates {
-		t.Log(got)
 		if want, ok := updates[name]; !ok {
 			t.Fatalf("received unexpected update: %s %v", name, got)
 		} else {
-			t.Logf("want %v", want)
 			if !cmp.Equal(want, got) {
 				t.Fatal(cmp.Diff(want, got))
 			}
