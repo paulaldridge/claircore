@@ -16,19 +16,7 @@ import (
 // inserts an updater with last update timestamp, or updates an existing updater with a new update time
 func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterName string, updateTime time.Time, fingerprint driver.Fingerprint, updaterError error) error {
 	const (
-		// // upsert inserts or updates a record of the last time an updater was checked for new vulns
-		// upsert = `INSERT INTO update_time (
-		// 	updater_name,
-		// 	last_update_time
-		// ) VALUES (
-		// 	$1,
-		// 	$2
-		// )
-		// ON CONFLICT (updater_name) DO UPDATE
-		// SET last_update_time = $2
-		// RETURNING updater_name;`
-
-		// upsert inserts or updates a record of the last time an updater was checked for new vulns
+		// upsertSuccessfulUpdate inserts or updates a record of the last time an updater successfully checked for new vulns
 		upsertSuccessfulUpdate = `INSERT INTO updater_status (
 			updater_name,
 			last_update,
@@ -49,7 +37,7 @@ func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterNam
 			fingerprint = $3
 		RETURNING updater_name;`
 
-		// upsert inserts or updates a record of the last time an updater was checked for new vulns
+		// upsert inserts or updates a record of the last time an updater attempted but failed to check for new vulns
 		upsertFailedUpdate = `INSERT INTO updater_status (
 					updater_name,
 					last_update,
@@ -96,8 +84,8 @@ func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterNam
 		Msg("debug: using upsertFailedUpdate")
 		fmt.Printf("debug: using upsertFailedUpdate")
 		if err := pool.QueryRow(ctx, upsertFailedUpdate, updaterName, updateTime, fingerprint, updaterError.Error()).Scan(&returnedUpdaterName); err != nil {
-			return fmt.Errorf("failed to upsert last update time: %w", err)
-		}
+				return fmt.Errorf("failed to upsert last update time: %w", err)
+			}
 	}
 
 	zlog.Debug(ctx).
@@ -105,7 +93,7 @@ func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterNam
 		Msg("Updater last update time stored in database")
 
 	return nil
-}
+	}
 
 // recordUpdaterSetUpdateTime records that all updaters for a single updaterSet are up to date with vulnerabilities at this time
 // updates all existing updaters from this upater set with the new update time
