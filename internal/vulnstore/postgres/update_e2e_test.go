@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"strconv"
@@ -167,11 +168,11 @@ func (e *e2e) GetUpdateOperations(ctx context.Context) func(*testing.T) {
 }
 
 type update struct {
-	UpdaterName string
-	UpdateTime  time.Time
-	Success     bool               // should this be in struct or should the struct just be input stuff
-	Fingerprint driver.Fingerprint // should this be fingerprint of lastFingerprint (insert not table contents)
-	UpdateError error
+	UpdaterName string             `json:"updater_name"`
+	UpdateTime  time.Time          `json:"last_update"`
+	Success     bool               `json:"success"`
+	Fingerprint driver.Fingerprint `json:"fingerprint"`
+	UpdateError *string            `json:"error"`
 }
 
 // recordUpdateTimes confirms multiple updates to record last update times
@@ -179,6 +180,7 @@ type update struct {
 func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 	return func(t *testing.T) {
 		ctx := zlog.Test(ctx, t)
+		errorText := "test error"
 		updates := []update{
 			{
 				UpdaterName: "test-updater-1",
@@ -198,10 +200,21 @@ func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 				Success:     true,
 				Fingerprint: driver.Fingerprint(uuid.New().String()),
 			},
+			{
+				UpdaterName: "test-updater-3",
+				UpdateTime:  time.Date(2021, time.Month(2), 21, 1, 10, 30, 0, time.UTC),
+				Success:     false,
+				Fingerprint: driver.Fingerprint(uuid.New().String()),
+				UpdateError: &errorText,
+			},
 		}
 		expectedTableContents := make(map[string]update)
 		for _, update := range updates {
-			err := e.s.RecordUpdaterUpdateTime(ctx, update.UpdaterName, update.UpdateTime, update.Fingerprint, update.UpdateError)
+			var updateError error
+			if update.UpdateError != nil {
+				updateError = errors.New(*update.UpdateError)
+			}
+			err := e.s.RecordUpdaterUpdateTime(ctx, update.UpdaterName, update.UpdateTime, update.Fingerprint, updateError)
 			if err != nil {
 				t.Fatalf("failed to perform update: %v", err)
 			}
@@ -213,6 +226,7 @@ func (e *e2e) recordUpdateTimes(ctx context.Context) func(*testing.T) {
 		e.s.RecordUpdaterSetUpdateTime(ctx, "test", newUpdaterSetTime)
 		for updater, row := range expectedTableContents {
 			row.UpdateTime = newUpdaterSetTime
+			row.Success = true
 			expectedTableContents[updater] = row
 		}
 		checkUpdateTimes(ctx, t, e.pool, expectedTableContents)
@@ -486,30 +500,20 @@ FROM updater_status`
 
 	queriedUpdates := make(map[string]update)
 	for rows.Next() {
-		var updaterName string
-		var lastUpdateTime time.Time
-		var lastSuccess time.Time
-		var success bool
-		var fingerprint string
-		var updateError error
+		var lastSuccess *time.Time // TODO add this to update struct
+		var updateEntry update
 		err := rows.Scan(
-			&updaterName,
-			&lastUpdateTime,
+			&updateEntry.UpdaterName,
+			&updateEntry.UpdateTime,
 			&lastSuccess,
-			&success,
-			&fingerprint,
-			updateError,
+			&updateEntry.Success,
+			&updateEntry.Fingerprint,
+			&updateEntry.UpdateError,
 		)
 		if err != nil {
 			t.Fatalf("failed to scan update: %v", err)
 		}
-		queriedUpdates[updaterName] = update{
-			UpdaterName: updaterName,
-			UpdateTime:  lastUpdateTime,
-			Success:     success,
-			Fingerprint: driver.Fingerprint(fingerprint),
-			UpdateError: updateError,
-		}
+		queriedUpdates[updateEntry.UpdaterName] = updateEntry
 	}
 	if err := rows.Err(); err != nil {
 		t.Error(err)
@@ -517,9 +521,11 @@ FROM updater_status`
 
 	// confirm we did not receive unexpected updates
 	for name, got := range queriedUpdates {
+		t.Log(got)
 		if want, ok := updates[name]; !ok {
 			t.Fatalf("received unexpected update: %s %v", name, got)
 		} else {
+			t.Logf("want %v", want)
 			if !cmp.Equal(want, got) {
 				t.Fatal(cmp.Diff(want, got))
 			}
