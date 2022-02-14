@@ -342,6 +342,7 @@ func (m *Manager) driveUpdater(ctx context.Context, u driver.Updater) error {
 	case err == nil:
 	case errors.Is(err, driver.Unchanged):
 		zlog.Info(ctx).Msg("vulnerability database unchanged")
+		err = nil
 		return nil
 	default:
 		return err
@@ -353,7 +354,8 @@ func (m *Manager) driveUpdater(ctx context.Context, u driver.Updater) error {
 		var ers []driver.EnrichmentRecord
 		ers, err = eu.ParseEnrichment(ctx, vulnDB)
 		if err != nil {
-			return fmt.Errorf("enrichment database parse failed: %v", err)
+			err = fmt.Errorf("enrichment database parse failed: %v", err)
+			return err
 		}
 
 		ref, err = m.store.UpdateEnrichments(ctx, name, newFP, ers)
@@ -361,13 +363,15 @@ func (m *Manager) driveUpdater(ctx context.Context, u driver.Updater) error {
 		var vulns []*claircore.Vulnerability
 		vulns, err = u.Parse(ctx, vulnDB)
 		if err != nil {
-			return fmt.Errorf("vulnerability database parse failed: %v", err)
+			err = fmt.Errorf("vulnerability database parse failed: %v", err)
+			return err
 		}
 
 		ref, err = m.store.UpdateVulnerabilities(ctx, name, newFP, vulns)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to update: %v", err)
+		err = fmt.Errorf("failed to update: %v", err)
+		return err
 	}
 	zlog.Info(ctx).
 		Str("ref", ref.String()).
