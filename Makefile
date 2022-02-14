@@ -17,8 +17,7 @@ genmocks:
 # environment variable "POSTGRES_CONNECTION_STRING" isn't set.
 .PHONY: integration
 integration:
-	# go test -count=1 -race -tags integration ./...
-	go test -count=1 -race -tags integration ./internal/vulnstore/postgres
+	go test -count=1 -race -tags integration ./...
 
 # runs unit tests. no db necessary
 .PHONY: unit

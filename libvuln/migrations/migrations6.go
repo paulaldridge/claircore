@@ -15,7 +15,3 @@ CREATE TABLE IF NOT EXISTS updater_status (
 );
 `
 )
-
-// 1. Update runs, finds new vulns, successful adds vulns to db - last_attempt, last_success, last_run_success=true, last_fingerprint
-// 2. Update run, finds no new vulns - last_attempt, last_success, last_run_success=true, last_fingerprint?-depends if available
-// 3. Update fails to run - last_attempt, last_run_success=false, last_fingerprint?-depends if available, err

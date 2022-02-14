@@ -37,7 +37,7 @@ func recordUpdaterUpdateTime(ctx context.Context, pool *pgxpool.Pool, updaterNam
 			last_attempt_fingerprint = $3
 		RETURNING updater_name;`
 
-		// upsert inserts or updates a record of the last time an updater attempted but failed to check for new vulns
+		// upsertFailedUpdate inserts or updates a record of the last time an updater attempted but failed to check for new vulns
 		upsertFailedUpdate = `INSERT INTO updater_status (
 					updater_name,
 					last_attempt,
