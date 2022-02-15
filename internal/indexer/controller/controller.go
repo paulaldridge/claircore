@@ -41,11 +41,12 @@ func New(opts *indexer.Opts) *Controller {
 	}
 
 	s := &Controller{
-		Opts:         opts,
-		currentState: CheckManifest,
-		report:       scanRes,
-		manifest:     &claircore.Manifest{},
+		Opts:     opts,
+		report:   scanRes,
+		manifest: &claircore.Manifest{},
 	}
+
+	s.setState(CheckManifest)
 
 	return s
 }
