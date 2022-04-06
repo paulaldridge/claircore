@@ -165,9 +165,9 @@ func (h *HTTP) UpdateOperations(w http.ResponseWriter, r *http.Request) {
 func (h *HTTP) VulnerabilityReport(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ctx = zlog.ContextWithValues(ctx, "request_id", r.Header.Get("x-request-id"))
-	zlog.Info(ctx).Msg("Testing request_id is logged - info")
-	zlog.Warn(ctx).Msg("Testing request_id is logged - warn")
-	zlog.Error(ctx).Msg("Testing request_id is logged - error")
+	zlog.Info(ctx).Msg("Testing request_id is logged - info level")
+	zlog.Warn(ctx).Msg("Testing request_id is logged - warn level")
+	zlog.Error(ctx).Msg("Testing request_id is logged - error level")
 	if r.Method != http.MethodPost {
 		resp := &je.Response{
 			Code:    "method-not-allowed",
